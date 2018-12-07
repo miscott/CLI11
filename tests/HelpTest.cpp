@@ -24,7 +24,7 @@ TEST(THelp, Basic) {
 
 TEST(THelp, Footer) {
     CLI::App app{"My prog"};
-    app.set_footer("Report bugs to bugs@example.com");
+    app.footer("Report bugs to bugs@example.com");
 
     std::string help = app.help();
 
@@ -128,7 +128,7 @@ TEST(THelp, VectorOpts) {
 
 TEST(THelp, MultiPosOpts) {
     CLI::App app{"My prog"};
-    app.set_name("program");
+    app.name("program");
     std::vector<int> x, y;
     app.add_option("quick", x, "Disc")->expected(2);
     app.add_option("vals", y, "Other");
@@ -222,8 +222,8 @@ TEST(THelp, ManualSetters) {
     int x = 1;
 
     CLI::Option *op1 = app.add_option("--op", x);
-    op1->set_default_str("12");
-    op1->set_type_name("BIGGLES");
+    op1->default_str("12");
+    op1->type_name("BIGGLES");
     EXPECT_EQ(x, 1);
 
     std::string help = app.help();
@@ -231,7 +231,7 @@ TEST(THelp, ManualSetters) {
     EXPECT_THAT(help, HasSubstr("=12"));
     EXPECT_THAT(help, HasSubstr("BIGGLES"));
 
-    op1->set_default_val("14");
+    op1->default_val("14");
     EXPECT_EQ(x, 14);
     help = app.help();
     EXPECT_THAT(help, HasSubstr("=14"));
@@ -327,13 +327,11 @@ TEST(THelp, OnlyOneAllHelp) {
     std::vector<std::string> input{"--help-all"};
     EXPECT_THROW(app.parse(input), CLI::ExtrasError);
 
-    app.reset();
     std::vector<std::string> input2{"--yelp"};
     EXPECT_THROW(app.parse(input2), CLI::CallForAllHelp);
 
     // Remove the flag
     app.set_help_all_flag();
-    app.reset();
     std::vector<std::string> input3{"--yelp"};
     EXPECT_THROW(app.parse(input3), CLI::ExtrasError);
 }
@@ -513,10 +511,11 @@ TEST_F(CapturedHelp, CallForAllHelpOutput) {
               "  --help-all                  Help all\n"
               "\n"
               "Subcommands:\n"
-              "one -> One description\n"
+              "one\n"
+              "  One description\n\n"
               "two\n"
-              "Options:\n"
-              "  --three                     \n");
+              "  Options:\n"
+              "    --three                     \n\n");
 }
 TEST_F(CapturedHelp, NewFormattedHelp) {
     app.formatter_fn([](const CLI::App *, std::string, CLI::AppFormatMode) { return "New Help"; });
@@ -535,7 +534,7 @@ TEST_F(CapturedHelp, NormalError) {
 }
 
 TEST_F(CapturedHelp, RepacedError) {
-    app.set_failure_message(CLI::FailureMessage::help);
+    app.failure_message(CLI::FailureMessage::help);
 
     EXPECT_EQ(run(CLI::ExtrasError({"Thing"})), static_cast<int>(CLI::ExitCodes::ExtrasError));
     EXPECT_EQ(out.str(), "");
@@ -556,9 +555,17 @@ TEST(THelp, CustomDoubleOption) {
         custom_opt = {stol(vals.at(0)), stod(vals.at(1))};
         return true;
     });
-    opt->set_custom_option("INT FLOAT", 2);
+    opt->type_name("INT FLOAT")->type_size(2);
 
     EXPECT_THAT(app.help(), Not(HasSubstr("x 2")));
+}
+
+TEST(THelp, CheckEmptyTypeName) {
+    CLI::App app;
+
+    auto opt = app.add_flag("-f,--flag");
+    std::string name = opt->get_type_name();
+    EXPECT_TRUE(name.empty());
 }
 
 TEST(THelp, AccessDescription) {

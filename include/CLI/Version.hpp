@@ -6,8 +6,8 @@
 // [CLI11:verbatim]
 
 #define CLI11_VERSION_MAJOR 1
-#define CLI11_VERSION_MINOR 5
-#define CLI11_VERSION_PATCH 4
-#define CLI11_VERSION "1.5.4"
+#define CLI11_VERSION_MINOR 6
+#define CLI11_VERSION_PATCH 2
+#define CLI11_VERSION "1.6.2"
 
 // [CLI11:verbatim]

@@ -1,3 +1,8 @@
 exports:
   header-dirs:
     - include/
+
+defines:
+  FIPS_EXCEPTIONS: true
+  FIPS_RTTI: true
+  FIPS_UNITTESTS_RUN_AFTER_BUILD: true

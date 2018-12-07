@@ -3,10 +3,12 @@ if(NOT EXISTS "${CLI11_SOURCE_DIR}/extern/googletest/CMakeLists.txt")
     git submodule update --init")
 endif()
 
+list(APPEND CMAKE_MODULE_PATH "${CLI11_SOURCE_DIR}/cmake")
+
 # If submodule is available, add sanitizers
 # Set SANITIZE_ADDRESS, SANITIZE_MEMORY, SANITIZE_THREAD or SANITIZE_UNDEFINED
 if(EXISTS "${CLI11_SOURCE_DIR}/extern/sanitizers/cmake/FindSanitizers.cmake")
-    set(CMAKE_MODULE_PATH "${CLI11_SOURCE_DIR}/extern/sanitizers/cmake" ${CMAKE_MODULE_PATH})
+    list(APPEND CMAKE_MODULE_PATH "${CLI11_SOURCE_DIR}/extern/sanitizers/cmake")
     find_package(Sanitizers)
     if(SANITIZE_ADDRESS)
         message(STATUS "You might want to use \"${ASan_WRAPPER}\" to run your program")
@@ -30,7 +32,12 @@ set(CLI11_TESTS
     FormatterTest
     NewParseTest
     OptionalTest
+    DeprecatedTest
     )
+
+if(WIN32)
+    list(APPEND CLI11_TESTS WindowsTest)
+endif()
 
 set(CLI11_MULTIONLY_TESTS
     TimerTest
@@ -66,6 +73,13 @@ foreach(T ${CLI11_MULTIONLY_TESTS})
 
 endforeach()
 
+# Add -Wno-deprecated-declarations to DeprecatedTest
+if(NOT MSVC)
+    target_compile_options(DeprecatedTest PRIVATE -Wno-deprecated-declarations)
+    if(TARGET DeprecatedTest_Single)
+        target_compile_options(DeprecatedTest_Single PRIVATE -Wno-deprecated-declarations)
+    endif()
+endif()
 
 # Link test (build error if inlines missing)
 add_library(link_test_1 link_test_1.cpp)

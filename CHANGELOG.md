@@ -1,30 +1,72 @@
+## Version 1.6.2: Help-all
+
+This version fixes some formatting bugs with help-all. It also adds fixes for several warnings, including an experimental optional error on Clang 7. Several smaller fixes.
+
+* Fixed help-all formatting [#163]
+    * Printing help-all on nested command now fixed (App)
+    * Missing space after help-all restored (Default formatter)
+    * More detail printed on help all (Default formatter)
+    * Help-all subcommands get indented with inner blank lines removed (Default formatter)
+    * `detail::find_and_replace` added to utilities
+* Fixed CMake install as subproject with `CLI11_INSTALL` flag. [#156]
+* Fixed warning about local variable hiding class member with MSVC [#157]
+* Fixed compile error with default settings on Clang 7 and libc++ [#158]
+* Fixed special case of `--help` on subcommands (general fix planned for 1.7) [#168]
+* Removing an option with links  [#179]
+
+[#156]: https://github.com/CLIUtils/CLI11/issues/156
+[#157]: https://github.com/CLIUtils/CLI11/issues/157
+[#158]: https://github.com/CLIUtils/CLI11/issues/158
+[#163]: https://github.com/CLIUtils/CLI11/pull/163
+[#168]: https://github.com/CLIUtils/CLI11/issues/168
+[#179]: https://github.com/CLIUtils/CLI11/pull/179
+
+
+## Version 1.6.1: Platform fixes
+
+This version provides a few fixes for special cases, such as mixing with `Windows.h` and better defaults
+for systems like Hunter. The one new feature is the ability to produce "branded" single file output for
+providing custom namespaces or custom macro names.
+
+* Added fix and test for including Windows.h [#145]
+* No longer build single file by default if main project, supports systems stuck on Python 2.6 [#149], [#151]
+* Branding support for single file output [#150]
+
+[#145]: https://github.com/CLIUtils/CLI11/pull/145
+[#149]: https://github.com/CLIUtils/CLI11/pull/149
+[#150]: https://github.com/CLIUtils/CLI11/pull/150
+[#151]: https://github.com/CLIUtils/CLI11/pull/151
+
 ## Version 1.6: Formatting help
 
 Added a new formatting system [#109]. You can now set the formatter on Apps. This has also simplified the internals of Apps and Options a bit by separating most formatting code.
 
 * Added `CLI::Formatter` and `formatter` slot for apps, inherited.
-* `FormatterBase` is the minimum required
-* `FormatterLambda` provides for the easy addition of an arbitrary function
-* Added `help_all` support (not added by default)
+* `FormatterBase` is the minimum required.
+* `FormatterLambda` provides for the easy addition of an arbitrary function.
+* Added `help_all` support (not added by default).
 
 Changes to the help system (most normal users will not notice this):
 
-* Renamed `single_name` to `get_name(false, false)` (the default)
-* The old `get_name()` is now `get_name(false, true)`
-* The old `get_pname()` is now `get_name(true, false)`
-* Removed `help_*` functions
-* Protected function `_has_help_positional` removed
-* `format_help` can now be chained
+* Renamed `single_name` to `get_name(false, false)` (the default).
+* The old `get_name()` is now `get_name(false, true)`.
+* The old `get_pname()` is now `get_name(true, false)`.
+* Removed `help_*` functions.
+* Protected function `_has_help_positional` removed.
+* `format_help` can now be chained.
+* Added getters for the missing parts of options (help no longer uses any private parts).
+* Help flags now use new `short_circuit` property to simplify parsing. [#121]
 
 
 New for Config file reading and writing [#121]:
 
-* Overridable, bidirectional Config
-* ConfigINI provided and used by default
-* Renamed ini to config in many places
-* Has `config_formatter()` and `get_config_formatter()`
-* Dropped prefix argument from `config_to_str`
-* Added `ConfigItem`
+* Overridable, bidirectional Config.
+* ConfigINI provided and used by default.
+* Renamed ini to config in many places.
+* Has `config_formatter()` and `get_config_formatter()`.
+* Dropped prefix argument from `config_to_str`.
+* Added `ConfigItem`.
+* Added an example of a custom config format using [nlohmann/json]. [#138]
 
 
 Validators are now much more powerful [#118], all built in validators upgraded to the new form:
@@ -36,20 +78,29 @@ Validators are now much more powerful [#118], all built in validators upgraded t
 
 Other changes:
 
-* Added `->each()` to make adding custom callbacks easier [#126]
-* Added filter argument to `get_subcommands`, `get_options`; use empty filter `{}` to avoid filtering
-* Added `get_groups()` to get groups
-* Added getters for the missing parts of options (help no longer uses any private parts)
-* Better support for manual options with `get_option`, `set_results`, and `empty` [#119]
-* `lname` and `sname` have getters, added `const get_parent` [#120]
-* Using `add_set` will now capture L-values for sets, allowing further modification [#113]
-* Internally, `type_name` is now a lambda function; for sets, this reads the set live [#116] 
-* Dropped duplicate way to run `get_type_name` (`get_typeval`)
+* Fixing `parse(args)`'s `args` setting and ordering after parse. [#141]
+* Replaced `set_custom_option` with `type_name` and `type_size` instead of `set_custom_option`. Methods return `this`. [#136]
+* Dropped `set_` on Option's `type_name`, `default_str`, and `default_val`. [#136]
+* Removed `set_` from App's `failure_message`, `footer`, `callback`, and `name`. [#136]
+* Fixed support `N<-1` for `type_size`. [#140]
+* Added `->each()` to make adding custom callbacks easier. [#126]
+* Allow empty options `add_option("-n",{})` to be edited later with `each` [#142]
+* Added filter argument to `get_subcommands`, `get_options`; use empty filter `{}` to avoid filtering.
+* Added `get_groups()` to get groups.
+* Better support for manual options with `get_option`, `set_results`, and `empty`. [#119]
+* `lname` and `sname` have getters, added `const get_parent`. [#120]
+* Using `add_set` will now capture L-values for sets, allowing further modification. [#113]
+* Dropped duplicate way to run `get_type_name` (`get_typeval`).
+* Removed `requires` in favor of `needs` (deprecated in last version). [#112]
+* Const added to argv. [#126]
+
+Backend and testing changes:
+
+* Internally, `type_name` is now a lambda function; for sets, this reads the set live. [#116] 
+* Cleaner tests without `app.reset()` (and `reset` is now `clear`). [#141]
+* Better CMake policy handling. [#110]
+* Includes are properly sorted. [#120]
 * Testing (only) now uses submodules. [#111]
-* Removed `requires` in favor of `needs` (deprecated in last version) [#112]
-* Better CMake policy handling [#110]
-* Includes are properly sorted [#120]
-* Help flags now use new `short_circuit` property to simplify parsing [#121]
 
 [#109]: https://github.com/CLIUtils/CLI11/pull/109
 [#110]: https://github.com/CLIUtils/CLI11/pull/110
@@ -62,6 +113,13 @@ Other changes:
 [#120]: https://github.com/CLIUtils/CLI11/pull/120
 [#121]: https://github.com/CLIUtils/CLI11/pull/121
 [#126]: https://github.com/CLIUtils/CLI11/pull/126
+[#127]: https://github.com/CLIUtils/CLI11/pull/127
+[#138]: https://github.com/CLIUtils/CLI11/pull/138
+[#140]: https://github.com/CLIUtils/CLI11/pull/140
+[#141]: https://github.com/CLIUtils/CLI11/pull/141
+[#142]: https://github.com/CLIUtils/CLI11/pull/142
+
+[nlohmann/json]: https://github.com/nlohmann/json
 
 ### Version 1.5.4: Optionals
 This version fixes the optional search in the single file version; some macros were not yet defined when it did the search. You can define the `CLI11_*_OPTIONAL` macros to 0 if needed to eliminate the search.

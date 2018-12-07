@@ -4,11 +4,11 @@ from __future__ import print_function, unicode_literals
 
 import os
 import re
-import argparse
-import operator
+from argparse import ArgumentParser
+from operator import add
 from copy import copy
-from subprocess import check_output, CalledProcessError
 from functools import reduce
+from subprocess import Popen, PIPE
 
 includes_local = re.compile(r"""^#include "(.*)"$""", re.MULTILINE)
 includes_system = re.compile(r"""^#include \<(.*)\>$""", re.MULTILINE)
@@ -44,7 +44,7 @@ class HeaderFile(object):
 
         # add self.verbatim
         if 'CLI11:verbatim' in inner:
-            self.verbatim = ["\n\n// Verbatim copy from {}:".format(inc)]
+            self.verbatim = ["\n\n// Verbatim copy from {0}:".format(inc)]
             self.verbatim += verbatim_all.findall(inner)
             inner = verbatim_all.sub("", inner)
         else:
@@ -52,7 +52,9 @@ class HeaderFile(object):
 
         self.headers = set(includes_system.findall(inner))
 
-        self.body = '\n// From {}:\n\n'.format(inc) + inner[inner.find('namespace'):]
+        self.body = '\n// From {0}:\n\n'.format(inc) + inner[inner.find('namespace'):]
+
+        self.namespace = None
 
     def __add__(self, other):
         out = copy(self)
@@ -69,8 +71,15 @@ class HeaderFile(object):
     def verbatim_str(self):
         return '\n'.join(self.verbatim)
 
+    def insert_namespace(self, namespace):
+        self.namespace = namespace
+
+    def macro_replacement(self, before, after):
+        self.verbatim = [x.replace(before, after) for x in self.verbatim]
+        self.body = self.body.replace(before, after)
+
     def __str__(self):
-        return '''\
+        result = '''\
 #pragma once
 
 // CLI11: Version {self.VERSION}
@@ -87,17 +96,27 @@ class HeaderFile(object):
 // Standard combined includes:
 
 {self.header_str}
-{self.verbatim_str}
-{self.body}
 '''.format(self=self)
 
+        if self.namespace:
+             result += '\nnamespace ' + self.namespace + ' {\n\n'
+        result += '{self.verbatim_str}\n{self.body}\n'.format(self=self)
+        if self.namespace:
+            result += '} // namespace ' + self.namespace + '\n\n'
 
-def MakeHeader(output, main_header, include_dir = '../include'):
+        return result
+
+
+def MakeHeader(output, main_header, include_dir = '../include', namespace=None, macro=None):
     # Set tag if possible to class variable
     try:
-        HeaderFile.TAG = check_output(['git', 'describe', '--tags', '--always'], cwd=str(DIR)).decode("utf-8").strip()
-    except CalledProcessError:
+        proc = Popen(['git', 'describe', '--tags', '--always'], cwd=str(DIR), stdout=PIPE)
+        out, _ = proc.communicate()
+    except OSError:
         pass
+    else:
+        if proc.returncode == 0:
+            HeaderFile.TAG = out.decode("utf-8").strip()
 
     base_dir = os.path.abspath(os.path.join(DIR, include_dir))
     main_header = os.path.join(base_dir, main_header)
@@ -112,20 +131,30 @@ def MakeHeader(output, main_header, include_dir = '../include'):
     include_files = includes_local.findall(header)
 
     headers = [HeaderFile(base_dir, inc) for inc in include_files]
-    single_header = reduce(operator.add, headers)
+    single_header = reduce(add, headers)
+
+    if macro is not None:
+        before = 'CLI11_'
+        print("Converting macros", before, "->", macro)
+        single_header.macro_replacement(before, macro)
+
+    if namespace:
+        print("Adding namespace", namespace)
+        single_header.insert_namespace(namespace)
 
     with open(output, 'w') as f:
         f.write(str(single_header))
 
     print("Created", output)
 
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser(usage='Convert source to single header include. Can optionally add namespace and search-replace replacements (for macros).')
     parser.add_argument("output", help="Single header file output")
     parser.add_argument("--main", default='CLI/CLI.hpp', help="The main include file that defines the other files")
-    parser.add_argument("--include", default='../include')
+    parser.add_argument("--include", default='../include', help="The include directory")
+    parser.add_argument("--namespace", help="Add an optional namespace")
+    parser.add_argument("--macro", help="Replaces CLI11_ with NEW_PREFIX_")
     args = parser.parse_args()
 
-    MakeHeader(args.output, args.main, args.include)
+    MakeHeader(args.output, args.main, args.include, args.namespace, args.macro)
 

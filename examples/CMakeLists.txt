@@ -14,6 +14,33 @@ function(add_cli_exe T)
     endif()
 endfunction()
 
+option(CLI11_EXAMPLE_JSON OFF)
+if(CLI11_EXAMPLE_JSON)
+    if(NOT EXISTS "${CLI11_SOURCE_DIR}/extern/json/single_include/nlohmann/json.hpp")
+        message(ERROR "You are missing the json package for CLI11_EXAMPLE_JSON. Please update your submodules (git submodule update --init)")
+    endif()
+    if(CMAKE_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9)
+        message(WARNING "The json example requires GCC 4.9+ (requirement on json library)")
+    endif()
+    add_cli_exe(json json.cpp)
+    target_include_directories(json PUBLIC SYSTEM "${CLI11_SOURCE_DIR}/extern/json/single_include")
+
+    add_test(NAME json_config_out COMMAND json --item 2)
+    set_property(TEST json_config_out PROPERTY PASS_REGULAR_EXPRESSION
+        "{"
+        "\"item\": \"2\""
+        "\"simple\": false"
+        "}")
+
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/input.json" [=[{"item":3,"simple":false}]=])
+    add_test(NAME json_config_in COMMAND json --config "${CMAKE_CURRENT_BINARY_DIR}/input.json")
+    set_property(TEST json_config_in PROPERTY PASS_REGULAR_EXPRESSION
+        "{"
+        "\"item\": \"3\""
+        "\"simple\": false"
+        "}")
+endif()
+
 add_cli_exe(simple simple.cpp)
 add_test(NAME simple_basic COMMAND simple)
 add_test(NAME simple_all COMMAND simple -f filename.txt -c 12 --flag --flag -d 1.2)
@@ -35,6 +62,20 @@ set_property(TEST subcommands_all PROPERTY PASS_REGULAR_EXPRESSION
     "Count of --random flag: 1"
     "Subcommand: start"
     "Subcommand: stop")
+
+add_cli_exe(validators validators.cpp)
+add_test(NAME validators_help COMMAND validators --help)
+set_property(TEST validators_help PROPERTY PASS_REGULAR_EXPRESSION
+    "  -f,--file FILE              File name"
+    "  -v,--value INT in [3 - 6]   Value in range")
+add_test(NAME validators_file COMMAND validators --file nonex.xxx)
+set_property(TEST validators_file PROPERTY PASS_REGULAR_EXPRESSION
+    "--file: File does not exist: nonex.xxx"
+    "Run with --help for more information.")
+add_test(NAME validators_plain COMMAND validators --value 9)
+set_property(TEST validators_plain PROPERTY PASS_REGULAR_EXPRESSION
+    "--value: Value 9 not in range 3 to 6"
+    "Run with --help for more information.")
 
 add_cli_exe(groups groups.cpp)
 add_test(NAME groups_none COMMAND groups)
@@ -85,3 +126,9 @@ set_property(TEST subcom_in_files PROPERTY PASS_REGULAR_EXPRESSION
     "Using foo!")
 
 add_cli_exe(formatter formatter.cpp)
+
+add_cli_exe(nested nested.cpp)
+
+add_cli_exe(subcom_help subcom_help.cpp)
+add_test(NAME subcom_help_normal COMMAND subcom_help sub --help)
+add_test(NAME subcom_help_reversed COMMAND subcom_help --help sub)
