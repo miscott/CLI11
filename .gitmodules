@@ -7,3 +7,6 @@
 [submodule "extern/json"]
 	path = extern/json
 	url = ../../nlohmann/json.git
+[submodule "CLI11"]
+	path = CLI11
+	url = https://github.com/miscott/CLI11.git
